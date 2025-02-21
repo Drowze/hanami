@@ -158,8 +158,10 @@ module Hanami
       #
       # @api public
       # @since 2.0.0
-      def environment(env_name, &block)
-        instance_eval(&block) if env_name == config.env
+      def environment(*env_names, &block)
+        raise ArgumentError, "missing environment name(s)" if env_names.empty?
+
+        instance_eval(&block) if env_names.include?(config.env)
         self
       end
 
