@@ -156,24 +156,34 @@ module Hanami
 
     # @api private
     def initialize(store = EMPTY_STORE)
-      errors = config._settings.map(&:name).each_with_object({}) do |name, errs|
-        value = store.fetch(name, Undefined)
+      errors = parse_children(store, config._settings)
+      raise InvalidSettingsError, errors if errors.any?
+
+      config.finalize!
+    end
+
+    def parse_children(store, settings, namespaces = [])
+      config = namespaces.reduce(self) { |acc, namespace| acc.public_send(namespace) }
+
+      settings.each_with_object({}) do |setting, errs|
+        if setting.children.any?
+          next parse_children(store, setting.children, namespaces + [setting.name])
+        end
+
+        value = store.fetch([*namespaces, setting.name].join("__").to_sym, Undefined)
 
         if value.eql?(Undefined)
           # When a key is missing entirely from the store, _read_ its value from the config instead.
           # This ensures its setting constructor runs (with a `nil` argument given) and raises any
           # necessary errors.
-          public_send(name)
+          config.public_send(setting.name)
         else
-          public_send("#{name}=", value)
+          config.public_send("#{setting.name}=", value)
         end
       rescue => e # rubocop:disable Style/RescueStandardError
-        errs[name] = e
+        setting_path = [*namespaces, setting.name].join(".")
+        errs[setting_path] = e
       end
-
-      raise InvalidSettingsError, errors if errors.any?
-
-      config.finalize!
     end
 
     # Returns a string containing a human-readable representation of the settings.
