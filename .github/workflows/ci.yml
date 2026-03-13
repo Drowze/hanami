@@ -9,8 +9,8 @@ on:
     tags: ["v*"]
   pull_request:
     branches: ["main", "release-*"]
-  schedule:
-    - cron: "30 4 * * *"
+  # schedule:
+  #   - cron: "30 4 * * *"
 
 jobs:
   tests:
